@@ -13,25 +13,32 @@ def value_str(val: int) -> str:
 	return str(val)
 
 def simple_strategy(current_reg_value: int, reg_name: str, target: int) -> Tuple[List[str], int | None]:
+	if current_reg_value == target:
+		return ([
+			"what can I say except " + reg_name,
+		], current_reg_value)
 	return ([
 		"what can I say except " + value_str(target),
 	], None)
 
 def add_strategy(current_reg_value: int, reg_name: str, target: int) -> Tuple[List[str], int | None]:
-	if current_reg_value == target:
-		return ([
-			"what can I say except " + reg_name,
-		], current_reg_value)
-	else:
-		diff_val = target - current_reg_value
-		if diff_val < 0:
-			diff_val += 256
+	diff_val = target - current_reg_value
+	if diff_val < 0:
+		diff_val += 256
 
-		return ([
-			f"{reg_name} units are ready, with {diff_val} more well on the way",
-			"what can I say except " + reg_name,
-		], target)
+	return ([
+		f"{reg_name} units are ready, with {diff_val} more well on the way",
+		"what can I say except " + reg_name,
+	], target)
 
+def upvote_strategy(current_reg_value: int, reg_name: str, target: int) -> Tuple[List[str], int | None]:
+	diff_val = target - current_reg_value
+	if diff_val < 0:
+		diff_val += 256
+
+	return ["upvote " + reg_name] * diff_val + [
+		"what can I say except " + reg_name,
+	], target
 
 
 possible_registers = [
@@ -43,11 +50,14 @@ possible_registers = [
 strategies = [
 	simple_strategy,
 	add_strategy,
+	upvote_strategy,
 ]
 
 def convert_memeasm(target: str) -> str:
 	output = []
 	register_state = {}
+
+	target = target.encode('utf-8')
 
 	for i in range(len(target)):
 		register = random.choice(possible_registers)
@@ -55,7 +65,12 @@ def convert_memeasm(target: str) -> str:
 		is_new_register = register not in register_state
 		register_val = random.randint(0, 255) if is_new_register else register_state[register]
 
-		new_output, new_reg_val = random.choice(strategies)(register_val, register, ord(target[i]))
+		# see if we can just reuse a previous register
+		if register_val == int(target[i]):
+			new_output, new_reg_val = simple_strategy(register_val, register, int(target[i]))
+		else:
+			new_output, new_reg_val = random.choice(strategies)(register_val, register, int(target[i]))
+
 		if new_reg_val is not None:
 			register_state[register] = new_reg_val
 
